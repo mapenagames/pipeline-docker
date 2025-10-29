@@ -10,7 +10,7 @@ library(
         [
             $class: 'GitSCMSource',
             credentialsId: env.GIT_CRED,
-            remote: "${env.GIT_BASE_URL}/alm/damian",
+            remote: "${env.GIT_BASE_URL}/mapenagames/pipeline-docker",
             traits: [
                 [ $class: 'jenkins.plugins.git.traits.BranchDiscoveryTrait' ],
                 [ $class: 'CleanAfterCheckoutTrait']
