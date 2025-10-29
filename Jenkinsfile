@@ -23,8 +23,9 @@ node (){
     stage("Carga 🕛") {
         cleanWs()
         alm_Utilidades.currentDate()
-        alm_VarsEnv()
         alm_Utilidades.logRotator()
+        alm_VarsEnv()
+
     }
     stage("Ejecución ▶️") {
         alm_Utilidades.messages("probando","info")
