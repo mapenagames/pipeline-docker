@@ -5,11 +5,11 @@ env.GIT_BASE_URL = "https://github.com" //URL Git
 //***** Carga SharedLibs *****//
 library(
     changelog: false,
-    identifier: 'alm@master',
+    identifier: 'alm@main',
     retriever: modernSCM(
         [
             $class: 'GitSCMSource',
-            credentialsId: env.GIT_CRED,
+            //credentialsId: env.GIT_CRED,
             remote: "${env.GIT_BASE_URL}/mapenagames/pipeline-docker",
             traits: [
                 [ $class: 'jenkins.plugins.git.traits.BranchDiscoveryTrait' ],
