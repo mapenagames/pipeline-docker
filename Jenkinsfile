@@ -29,6 +29,7 @@ node (){
     stage("docker Image 🕛") {
         script {
                 alm_Utilidades.messages("imagen alpine:latest","info")
+                env.DOCKER_HOST = 'unix:///var/run/docker.sock'
                 docker.image('alpine:latest').inside {
                     sh 'echo "Hola desde Docker!"'
                     sh 'uname -a'
