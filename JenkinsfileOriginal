@@ -1,0 +1,183 @@
+#!groovy
+env.GIT_CRED = "GitHubPusher" //Credenciales
+env.GIT_BASE_URL = "https://github.bancogalicia.com.ar" //URL Git
+//********************* Fin Declaración Variables *******************//
+//
+//***** Carga SharedLibs *****//
+library(
+    changelog: false,
+    identifier: 'alm@master',
+    retriever: modernSCM(
+        [
+            $class: 'GitSCMSource',
+            credentialsId: env.GIT_CRED,
+            remote: "${env.GIT_BASE_URL}/alm/damian",
+            traits: [
+                [ $class: 'jenkins.plugins.git.traits.BranchDiscoveryTrait' ],
+                [ $class: 'CleanAfterCheckoutTrait']
+            ]
+        ]
+    )
+)
+//
+node ("almt"){
+    stage("Carga 🕛") {
+        cleanWs()
+        currentBuild.getBuildCauses().each { cause ->
+            if( cause._class == 'org.jenkinsci.plugins.workflow.cps.replay.ReplayCause') {
+                alm_Utilidades.messages('"Replay" deshabilitado, por favor vuelva a iniciar el pipeline con el botón ▶️ RUN o la opción "Contruir Ahora".', 'error')
+                currentBuild.displayName = "⛔"
+                currentBuild.description = '"Replay" deshabilitado, por favor vuelva a iniciar el pipeline con el botón ▶️ RUN o la opción "Contruir Ahora".'
+                error()
+            }
+            if( cause._class == 'org.jenkinsci.plugins.pipeline.modeldefinition.causes.RestartDeclarativePipelineCause') {
+                alm_Utilidades.messages('"Restart" deshabilitado, por favor vuelva a iniciar el pipeline con el botón ▶️ RUN o la opción "Contruir Ahora".', 'error')
+                currentBuild.displayName = "⛔"
+                currentBuild.description = '"Restart" deshabilitado, por favor vuelva a iniciar el pipeline con el botón ▶️ RUN o la opción "Contruir Ahora".'
+                error()
+            }
+        }
+
+        alm_Utilidades.currentDate()
+        alm_VarsEnv()
+        alm_Utilidades.soyAlm()
+        alm_Utilidades.logRotator()
+        //permisos de aprobacion
+        env.AD_APPROVER_GROUP = "GAPALMTtestAPPROVER"  //L0170909
+        env.TRACKING_URL_INSERT = "/rm/insertar"
+        env.TRACKING_JENKINS_FILE = env.JOB_NAME
+        
+        //almtest.test()
+        //error("salgo x almtest")
+    }
+    stage("Opciones") {
+        // Seleccionar el tipor de implementacioopciones de la aplicacion
+        timeout(time: 3, unit: 'MINUTES') {
+            almRMOpcionesAPP(time: 3)
+        }
+        switch (env.APP_ACCION) {
+            case ["Gestionar arhivos War"]:
+                timeout(time: 3, unit: 'MINUTES') {
+                    almRMOpcionesWar()              // seleccionar subir a nexus o deployar
+                    almRMOpcionesRepo()
+                    almRMOpcionesRamaTag()
+                    switch (env.APP_ACCION) {
+                        case ["Subir archivo War a nexus"]:
+                            //dummy 
+                            break
+                        case ["Deployar archivo War"]:
+                            almRMOpcionesRamaTag.getRepoAlmConfigTags()
+                            alm_ValidarDeployPath()   // se ajusta los ambientes que tiene para deployar
+                            almRMDeploy_ambiente()   // seleccionar ambiente de deploy y seteo variables para nexus
+                            alm_ValidarDeployAmbienteAnterior()   //valida si existe el deploy en el ambiente anterior.
+                            break
+                    }
+                    switch (env.DEPLOY_ENV) {
+                    case ["PRODUCCION" , "HOMOLOGACION" , "INTEGRACION"]:
+                        timeout(time: 3, unit: 'MINUTES') {
+                                env.JENKINS_USER_APPROVER =alm_Menu_Approve(time: 3)
+                        }
+                        break
+                    }
+                }
+                break
+            case ["Compilar / Deployar"]:
+                timeout(time: 3, unit: 'MINUTES') {
+                    almRMOpcionesCompilarDeployar()     // seleccionar compilar o Deployar
+                    switch (env.APP_ACCION) {
+                        case ["Generar Instalador"]:
+                            almRMOpcionesRepo()
+                            almRMOpcionesRepo.selTopics()
+                            almRMOpcionesRamaTag()
+                            break
+
+
+                        case ["Deployar Instalador"]:
+                            timeout(time: 3, unit: 'MINUTES') {
+                                almRMOpcionesRepo()
+                                //x_almRMDeploy_ambiente()
+                                almRMDeploy_ambiente()                 //seleccionar ambiente de despliegue
+                                almRMDeploy_ambiente.selTagAlmConfig()
+                               switch (env.DEPLOY_ENV) {
+                                    case ["PRODUCCION" , "HOMOLOGACION" , "INTEGRACION"]:
+                                        timeout(time: 3, unit: 'MINUTES') {
+                                                env.JENKINS_USER_APPROVER =alm_Menu_Approve(time: 3)
+                                        }
+                                    break
+                                }
+                            }
+                            break
+                    }
+                }
+                break
+        }
+    }
+    stage("Ejecución ▶️") {
+        switch (env.APP_ACCION) {
+            case "Subir archivo War a nexus": 
+                almRMPipelineSubirANexusFile{}
+                break
+            case "Deployar archivo War":
+                //almRMDeploy_ambiente()                 //seleccionar ambiente de despliegue
+                //switch (env.DEPLOY_ENV) {
+                //   case "DESARROLLO":
+                          almRMPipelineDeployWarDEFAULT{}
+                //        //almRMPipelineDeployWarDEV{}
+                //        break
+                //    case "INTEGRACION":
+                //        println "falta definir Pipeline"
+                //        error("Error forzdo - falta definir pipeline")
+                //        break
+                //    case "HOMOLOGACION":
+                //        almRMPipelineDeployWarHOMO{}
+                //        break
+                //    case "PRODUCCION":
+                //        //almRMPipelineDeployInstaladorPROD{}
+                //        almRMPipelineDeployWarPROD{}
+                //        break
+                //}
+                break
+            case ["Generar Instalador"]:
+                //comienzo informacion que se puede eliminar------------------------------------------------------------
+                //comienzo informacion que se puede eliminar------------------------------------------------------------
+                alm_Utilidades.messages("Topics de la app                    : ${env.GIT_TOPICS}","info")
+                alm_Utilidades.messages("Lenguaje de Programación            : ${env.APP_LANG_PROG}","info")
+                alm_Utilidades.messages("Fuente a compilar                   : ${env.APP_COMPILAR_DESDE_TAG_BRANCH}","info")
+                def mensaje = (env.APP_COMPILAR_DESDE_TAG_BRANCH == "Seleccionar Rama") ?
+                    "Rama seleccionada: ${env.GIT_BRANCH}\nCommit: ${env.GIT_COMMIT}" :
+                    "Tag seleccionado: ${env.GIT_TAG}\nCommit: ${env.GIT_COMMIT}"
+
+                alm_Utilidades.messages(mensaje, "info")
+
+                alm_Utilidades.messages("Tag de Configuracion < 'alm_config' > seleccionado   : ${env.GIT_ALM_CONFIG_TAG}\nCommit: ${env.GIT_ALM_CONFIG_COMMIT}","info")
+                // fin informacion que se puede eliminar----------------------------------------------------------------
+                // fin informacion que se puede eliminar----------------------------------------------------------------
+                
+                switch( env.APP_LANG_PROG ) {
+                    case ["lp-cbl-v1","lp-cbl-v2"]:                  // lenguaje Cobol
+                        almRMPipelineCompile_CBL{}
+                        break
+                    case "lp-jar":                  // lenguaje Java
+                        almRMPipelineCompile_JAR{}
+                        break
+                }
+                break
+            case "Deployar Instalador":
+                switch (env.DEPLOY_ENV) {
+                   case "DESARROLLO":
+                        almRMPipelineDeployInstaladorDEV{}
+                        break
+                    case "INTEGRACION":
+                        almRMPipelineDeployInstaladorINTE{}
+                        break
+                    case "HOMOLOGACION":
+                        almRMPipelineDeployInstaladorHOMO{}
+                        break
+                    case "PRODUCCION":
+                        almRMPipelineDeployInstaladorPROD{}
+                        break
+                }
+                break
+        }
+    } 
+}
