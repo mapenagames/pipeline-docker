@@ -19,7 +19,7 @@ library(
     )
 )
 //
-node ("almt"){
+node (){
     stage("Carga 🕛") {
         cleanWs()
         alm_Utilidades.currentDate()
