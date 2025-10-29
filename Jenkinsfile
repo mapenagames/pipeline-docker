@@ -27,14 +27,12 @@ node (){
         alm_VarsEnv()
     }
     stage("docker Image 🕛") {
-        steps {
-            script {
+        script {
                 alm_Utilidades.messages("imagen alpine:latest","info")
                 docker.image('alpine:latest').inside {
                     sh 'echo "Hola desde Docker!"'
                     sh 'uname -a'
                 }
-            }
         }
     }
 }
