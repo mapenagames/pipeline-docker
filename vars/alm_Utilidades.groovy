@@ -114,6 +114,7 @@ def logRotator(){
     inputs:
         -> env.JENKINS_LOG_ROTATOR  // define la cantidad de corridas que se mantiene en jenkins
     */
+    println "logRotator = ${env.JENKINS_LOG_ROTATOR}"
     properties([
             buildDiscarder(logRotator(numToKeepStr: env.JENKINS_LOG_ROTATOR)),
             ])
