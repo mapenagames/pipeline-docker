@@ -22,9 +22,10 @@ library(
 node (){
     stage("Carga 🕛") {
         cleanWs()
+        alm_VarsEnv()
         alm_Utilidades.currentDate()
         alm_Utilidades.logRotator()
-        alm_VarsEnv()
+
     }
     stage("docker Image 🕛") {
         script {
